@@ -228,7 +228,7 @@ body {
 }
 
 .bubble-center {
-  left: clamp(210px, 25vw, 390px);
+  left: clamp(280px, 25vw, 470px);
   right: auto;
   top: 18%;
   background-color: var(--sage-dark);
