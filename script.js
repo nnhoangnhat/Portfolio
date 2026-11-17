@@ -41,7 +41,9 @@ const framesStore = {
 
 let activeClip = 'idle';
 let targetZone = 'idle';
-let firstSideLooked = null; // Ghi nhớ bên (left/right) người dùng nhìn đầu tiên
+let firstSideLooked = null; // Ghi nhớ bên (left/right) xuất hiện câu 1 trong chu kỳ hiện tại
+let sideStep = 0; // 0 = chưa hiện, 1 = đã hiện câu 1, 2 = đã hiện đủ 2 câu (chờ reset)
+let sideBubbleTimer = null;
 let currentFrame = 0;
 let loopDirection = 1;
 let hasReachedLoop = false;
@@ -236,20 +238,44 @@ function preloadAllFrames() {
   }
 }
 
+function clearSideBubbleTimer() {
+  if (sideBubbleTimer) {
+    clearTimeout(sideBubbleTimer);
+    sideBubbleTimer = null;
+  }
+}
+
 function updateTouchButtons(zone) {
+  clearSideBubbleTimer();
+
   if (zone === 'left' || zone === 'right') {
-    if (!firstSideLooked) {
+    if (sideStep === 0 || sideStep === 2) {
+      // Bắt đầu chu kỳ mới (hoặc reset lại từ đầu sau khi đã hiện đủ 2 câu)
+      sideStep = 1;
       firstSideLooked = zone;
+    } else if (sideStep === 1 && zone !== firstSideLooked) {
+      // Sang bên còn lại -> hiện câu 2 và đánh dấu đã đủ 2 câu
+      sideStep = 2;
     }
+
     const text =
-      zone === firstSideLooked
+      sideStep === 1
         ? 'Cô này xinh quá ❤️'
         : 'Cô này cũng xinh nữa 🤤';
+
     if (bubbles[zone]) {
       bubbles[zone].textContent = text;
     }
+
+    // Sau 3.5 giây tự ẩn nhẹ bong bóng thoại để không bị nằm chết trên màn hình
+    sideBubbleTimer = setTimeout(() => {
+      if (targetZone === zone && bubbles[zone]) {
+        bubbles[zone].classList.remove('is-visible');
+      }
+    }, 3500);
   } else if (zone === 'idle') {
     firstSideLooked = null;
+    sideStep = 0;
   }
 
   Object.entries(bubbles).forEach(([key, el]) => {
