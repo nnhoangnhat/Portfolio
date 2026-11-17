@@ -228,11 +228,17 @@ body {
 }
 
 .bubble-center {
-  right: clamp(24px, 16vw, 250px);
-  top: 22%;
+  left: clamp(210px, 25vw, 390px);
+  right: auto;
+  top: 18%;
   background-color: var(--sage-dark);
   border-color: var(--sage-dark);
   color: #ffffff;
+  transform: translateY(10px) scale(0.94) rotate(-5deg);
+}
+
+.bubble-center.is-visible {
+  transform: translateY(0) scale(1) rotate(-5deg);
 }
 
 /* ==================== CỤM NÚT PHÍA DƯỚI ==================== */
@@ -328,14 +334,11 @@ body {
     max-width: 175px;
   }
 
-  .bubble-idle {
-    left: 50%;
-    bottom: 22%;
-    transform: translateX(-50%) translateY(10px) scale(0.94);
-  }
-
-  .bubble-idle.is-visible {
-    transform: translateX(-50%) translateY(0) scale(1);
+  .bubble-center {
+    left: auto;
+    right: 16px;
+    top: 20%;
+    max-width: 195px;
   }
 
   .touch-controls {
