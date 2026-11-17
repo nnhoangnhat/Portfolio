@@ -254,7 +254,12 @@ function updateTouchButtons(zone) {
 
   Object.entries(bubbles).forEach(([key, el]) => {
     if (!el) return;
-    el.classList.toggle('is-visible', key === zone);
+    if (key === 'center') {
+      // Khung thoại ở giữa chỉ hiện khi nhân vật đã bỏ tai nghe xuống cổ
+      el.classList.toggle('is-visible', zone === 'center' && activeClip === 'center' && currentFrame >= 35);
+    } else {
+      el.classList.toggle('is-visible', key === zone);
+    }
   });
 
   touchButtons.forEach((btn) => {
@@ -326,6 +331,13 @@ function animate(now) {
   }
 
   drawCurrentFrame();
+
+  // Bật câu thoại ở giữa đúng lúc nhân vật đã bỏ tai nghe xuống cổ (từ frame 35 trở đi)
+  if (bubbles.center) {
+    const shouldShowCenter = targetZone === 'center' && activeClip === 'center' && currentFrame >= 35;
+    bubbles.center.classList.toggle('is-visible', shouldShowCenter);
+  }
+
   requestAnimationFrame(animate);
 }
 
