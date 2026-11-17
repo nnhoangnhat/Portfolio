@@ -1,8 +1,9 @@
 /**
  * Bộ điều khiển Landing Page full-screen:
- * 1. Hoạt ảnh nhân vật 3D theo con trỏ chuột (Hub-and-Spoke).
- * 2. Đốm sáng xanh sage thay thế con trỏ chuột mặc định.
+ * 1. Hoạt ảnh nhân vật 3D theo con trỏ chuột (Hub-and-Spoke) + lặp đuôi mượt khi treo chuột lâu.
+ * 2. Đốm sáng xanh sage thay thế con trỏ chuột mặc định (trên desktop).
  * 3. Tự động căn tỷ lệ chiều dài 3 dòng tiêu đề góc trên bên trái.
+ * 4. Tối ưu tải ảnh theo hàng đợi và khung hình dọc cho điện thoại.
  */
 
 const CLIPS = {
@@ -14,7 +15,6 @@ const CLIPS = {
 
 const canvas = document.getElementById('characterCanvas');
 const ctx = canvas.getContext('2d');
-const heroSection = document.getElementById('hero');
 const loaderBadge = document.getElementById('loaderBadge');
 const loaderText = document.getElementById('loaderText');
 const cursorGlow = document.getElementById('cursorGlow');
@@ -33,20 +33,19 @@ const touchButtons = document.querySelectorAll('.touch-btn');
 const ctaElements = document.querySelectorAll('a, button');
 
 const framesStore = {
-  idle: [],
-  left: [],
-  right: [],
-  center: [],
+  idle: new Array(CLIPS.idle.count),
+  left: new Array(CLIPS.left.count),
+  right: new Array(CLIPS.right.count),
+  center: new Array(CLIPS.center.count),
 };
 
 let activeClip = 'idle';
 let targetZone = 'idle';
 let currentFrame = 0;
-let loopDirection = 1; // 1 = tiến, -1 = lùi (ping-pong trong đoạn lặp)
-let hasReachedLoop = false; // Đánh dấu đã chạy hết phần dẫn nhập vào tới đoạn lặp cuối chưa
+let loopDirection = 1;
+let hasReachedLoop = false;
 let lastTime = performance.now();
 
-// Tọa độ đốm sáng chuột (nội suy nhẹ cho cảm giác lướt mượt)
 let mouseX = -200;
 let mouseY = -200;
 let glowX = -200;
@@ -57,6 +56,32 @@ function pad3(num) {
   return String(num).padStart(3, '0');
 }
 
+function isFrameReady(clipName, idx) {
+  const list = framesStore[clipName];
+  if (!list) return false;
+  const img = list[idx];
+  return Boolean(img && img.complete && img.naturalWidth > 0);
+}
+
+/**
+ * Tìm khung hình đã tải gần nhất để không bao giờ bị khựng hình trên mạng chậm
+ */
+function findNearestReadyImage(clipName, targetIdx) {
+  const list = framesStore[clipName];
+  if (!list) return null;
+
+  if (isFrameReady(clipName, targetIdx)) return list[targetIdx];
+
+  for (let offset = 1; offset < list.length; offset++) {
+    const prev = targetIdx - offset;
+    if (prev >= 0 && isFrameReady(clipName, prev)) return list[prev];
+    const next = targetIdx + offset;
+    if (next < list.length && isFrameReady(clipName, next)) return list[next];
+  }
+
+  return isFrameReady('idle', 0) ? framesStore.idle[0] : null;
+}
+
 /**
  * Điều chỉnh cỡ chữ để:
  * - "Nhật" có chiều dài bằng đúng 2/3 dòng "Nguyễn Ngô Hoàng"
@@ -65,7 +90,6 @@ function pad3(num) {
 function fitBrandTypography() {
   if (!brandFirst || !brandFull || !brandRole) return;
 
-  // Đặt cỡ chữ cơ sở để đo chính xác
   brandFirst.style.fontSize = '100px';
   brandRole.style.fontSize = '20px';
 
@@ -75,20 +99,15 @@ function fitBrandTypography() {
   const firstBaseWidth = brandFirst.getBoundingClientRect().width;
   if (firstBaseWidth > 0) {
     const targetFirstWidth = fullWidth * (2 / 3);
-    const computedFirstSize = 100 * (targetFirstWidth / firstBaseWidth);
-    brandFirst.style.fontSize = `${computedFirstSize.toFixed(2)}px`;
+    brandFirst.style.fontSize = `${(100 * (targetFirstWidth / firstBaseWidth)).toFixed(2)}px`;
   }
 
   const roleBaseWidth = brandRole.getBoundingClientRect().width;
   if (roleBaseWidth > 0) {
-    const computedRoleSize = 20 * (fullWidth / roleBaseWidth);
-    brandRole.style.fontSize = `${computedRoleSize.toFixed(2)}px`;
+    brandRole.style.fontSize = `${(20 * (fullWidth / roleBaseWidth)).toFixed(2)}px`;
   }
 }
 
-/**
- * Cập nhật kích thước canvas phủ toàn màn hình (full-page)
- */
 function resizeCanvas() {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = Math.round(window.innerWidth * dpr);
@@ -98,19 +117,25 @@ function resizeCanvas() {
 }
 
 /**
- * Vẽ khung hình hiện tại phủ full trang theo chế độ "cover" (luôn tràn màn hình, giữ đúng tỷ lệ)
+ * Vẽ khung hình hiện tại lên canvas:
+ * - Trên máy tính (màn hình ngang): phủ kín toàn màn hình (cover).
+ * - Trên điện thoại (màn hình dọc): căn vừa đủ để thấy trọn đầu, tay vẫy và laptop, hòa viền mềm vào nền kem.
  */
 function drawCurrentFrame() {
   const list = framesStore[activeClip];
-  if (!list || list.length === 0) return;
+  if (!list) return;
 
   const idx = Math.max(0, Math.min(list.length - 1, Math.round(currentFrame)));
-  const img = list[idx];
-  if (!img || !img.complete || img.naturalWidth === 0) return;
+  const img = findNearestReadyImage(activeClip, idx);
+  if (!img) return;
 
   const cw = canvas.width;
   const ch = canvas.height;
   ctx.clearRect(0, 0, cw, ch);
+
+  // Phủ nền kem đồng nhất trước khi vẽ
+  ctx.fillStyle = '#F4EFE3';
+  ctx.fillRect(0, 0, cw, ch);
 
   const imgRatio = img.naturalWidth / img.naturalHeight;
   const canvasRatio = cw / ch;
@@ -120,56 +145,94 @@ function drawCurrentFrame() {
   let offsetX = 0;
   let offsetY = 0;
 
-  // Chế độ cover: phủ kín toàn bộ màn hình
-  if (canvasRatio > imgRatio) {
-    drawW = cw;
-    drawH = cw / imgRatio;
-    offsetY = (ch - drawH) * 0.52;
+  if (canvasRatio >= 1) {
+    // Màn hình ngang (Desktop / Laptop)
+    if (canvasRatio > imgRatio) {
+      drawW = cw;
+      drawH = cw / imgRatio;
+      offsetY = (ch - drawH) * 0.52;
+    } else {
+      drawH = ch;
+      drawW = ch * imgRatio;
+      offsetX = (cw - drawW) / 2;
+    }
+    ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
   } else {
-    drawH = ch;
-    drawW = ch * imgRatio;
+    // Màn hình dọc (Điện thoại): thu vừa tầm để thấy cả tay vẫy hai bên và laptop
+    drawW = cw * 1.55;
+    drawH = drawW / imgRatio;
     offsetX = (cw - drawW) / 2;
-  }
+    offsetY = (ch - drawH) * 0.56;
+    ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
 
-  ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
+    // Làm mờ mềm cạnh trên và cạnh dưới ảnh trên điện thoại để hòa vào nền #F4EFE3
+    const fadeH = Math.round(drawH * 0.14);
+    const topGrad = ctx.createLinearGradient(0, offsetY, 0, offsetY + fadeH);
+    topGrad.addColorStop(0, '#F4EFE3');
+    topGrad.addColorStop(1, 'rgba(244, 239, 227, 0)');
+    ctx.fillStyle = topGrad;
+    ctx.fillRect(0, Math.max(0, offsetY - 2), cw, fadeH + 2);
+
+    const bottomY = offsetY + drawH;
+    const botGrad = ctx.createLinearGradient(0, bottomY - fadeH, 0, bottomY);
+    botGrad.addColorStop(0, 'rgba(244, 239, 227, 0)');
+    botGrad.addColorStop(1, '#F4EFE3');
+    ctx.fillStyle = botGrad;
+    ctx.fillRect(0, bottomY - fadeH, cw, fadeH + 2);
+  }
 }
 
 /**
- * Nạp trước toàn bộ ảnh WebP của 4 clip
+ * Tải ảnh theo hàng đợi giới hạn (tối đa 10 ảnh cùng lúc) để Safari trên điện thoại không bị nghẽn
  */
 function preloadAllFrames() {
-  const totalFrames = Object.values(CLIPS).reduce((sum, c) => sum + c.count, 0);
-  let loadedCount = 0;
+  const queue = [];
+  const loadOrder = ['idle', 'center', 'left', 'right'];
 
-  Object.entries(CLIPS).forEach(([name, info]) => {
+  loadOrder.forEach((name) => {
+    const info = CLIPS[name];
     for (let i = 1; i <= info.count; i++) {
-      const img = new Image();
-      img.src = `${info.folder}/${pad3(i)}.webp`;
-
-      img.onload = () => {
-        loadedCount++;
-        const percent = Math.round((loadedCount / totalFrames) * 100);
-        loaderText.textContent = `Đang chuẩn bị hoạt ảnh... ${percent}%`;
-
-        if (name === 'idle' && i === 1) {
-          drawCurrentFrame();
-        }
-
-        if (loadedCount >= totalFrames) {
-          loaderBadge.classList.add('is-done');
-        }
-      };
-
-      img.onerror = () => {
-        loadedCount++;
-        if (loadedCount >= totalFrames) {
-          loaderBadge.classList.add('is-done');
-        }
-      };
-
-      framesStore[name].push(img);
+      queue.push({ name, index: i - 1, src: `${info.folder}/${pad3(i)}.webp` });
     }
   });
+
+  const totalFrames = queue.length;
+  let loadedCount = 0;
+  let cursor = 0;
+  const maxConcurrent = 10;
+
+  function loadNext() {
+    if (cursor >= totalFrames) return;
+    const item = queue[cursor++];
+    const img = new Image();
+    framesStore[item.name][item.index] = img;
+
+    const onDone = () => {
+      loadedCount++;
+      const percent = Math.round((loadedCount / totalFrames) * 100);
+      if (loaderText) {
+        loaderText.textContent = `Đang chuẩn bị hoạt ảnh... ${percent}%`;
+      }
+
+      if (item.name === 'idle' && item.index === 0) {
+        drawCurrentFrame();
+      }
+
+      if (loadedCount >= totalFrames && loaderBadge) {
+        loaderBadge.classList.add('is-done');
+      }
+
+      loadNext();
+    };
+
+    img.onload = onDone;
+    img.onerror = onDone;
+    img.src = item.src;
+  }
+
+  for (let i = 0; i < maxConcurrent; i++) {
+    loadNext();
+  }
 }
 
 function updateTouchButtons(zone) {
@@ -190,13 +253,12 @@ function setTargetZone(newZone) {
 }
 
 /**
- * Vòng lặp 60fps cho hoạt ảnh nhân vật và đốm sáng chuột
+ * Vòng lặp 60fps: chỉ tiến frame khi ảnh tiếp theo đã sẵn sàng
  */
 function animate(now) {
   const dt = Math.min((now - lastTime) / 1000, 0.05);
   lastTime = now;
 
-  // Cập nhật vị trí đốm sáng mượt mà
   if (isMouseInside && cursorGlow) {
     glowX += (mouseX - glowX) * 0.28;
     glowY += (mouseY - glowY) * 0.28;
@@ -208,27 +270,31 @@ function animate(now) {
   const clipCfg = CLIPS[activeClip];
 
   if (activeClip === targetZone) {
+    let nextFrame = currentFrame;
+
     if (!hasReachedLoop) {
-      // Giai đoạn 1: Chạy xuôi từ điểm gốc (0) tới cuối đoạn hành động (loopEnd)
-      currentFrame += playFps * dt;
-      if (currentFrame >= clipCfg.loopEnd) {
-        currentFrame = clipCfg.loopEnd;
+      nextFrame = currentFrame + playFps * dt;
+      if (nextFrame >= clipCfg.loopEnd) {
+        nextFrame = clipCfg.loopEnd;
         hasReachedLoop = true;
-        loopDirection = -1; // Bắt đầu lùi nhẹ tạo nhịp ping-pong mượt mà
+        loopDirection = -1;
       }
     } else {
-      // Giai đoạn 2: Khi treo chuột lâu, lặp ping-pong liên tục trong đoạn [loopStart .. loopEnd]
-      currentFrame += loopDirection * clipCfg.loopFps * dt;
-      if (currentFrame >= clipCfg.loopEnd) {
-        currentFrame = clipCfg.loopEnd;
+      nextFrame = currentFrame + loopDirection * clipCfg.loopFps * dt;
+      if (nextFrame >= clipCfg.loopEnd) {
+        nextFrame = clipCfg.loopEnd;
         loopDirection = -1;
-      } else if (currentFrame <= clipCfg.loopStart) {
-        currentFrame = clipCfg.loopStart;
+      } else if (nextFrame <= clipCfg.loopStart) {
+        nextFrame = clipCfg.loopStart;
         loopDirection = 1;
       }
     }
+
+    const nextIdx = Math.max(0, Math.min(clipCfg.count - 1, Math.round(nextFrame)));
+    if (isFrameReady(activeClip, nextIdx)) {
+      currentFrame = nextFrame;
+    }
   } else {
-    // Giai đoạn 3: Chuột đổi hướng -> thoát khỏi vòng lặp và tua ngược nhanh về điểm gốc (0)
     hasReachedLoop = false;
     if (activeClip !== 'idle' && currentFrame > 0) {
       currentFrame = Math.max(0, currentFrame - rewindFps * dt);
@@ -247,8 +313,10 @@ function animate(now) {
   requestAnimationFrame(animate);
 }
 
-// Theo dõi chuột trên toàn trang
-window.addEventListener('mousemove', (e) => {
+// Chỉ theo dõi di chuyển chuột thật (bỏ qua sự kiện chuột giả lập do chạm trên điện thoại)
+window.addEventListener('pointermove', (e) => {
+  if (e.pointerType !== 'mouse') return;
+
   mouseX = e.clientX;
   mouseY = e.clientY;
 
@@ -281,9 +349,23 @@ ctaElements.forEach((el) => {
   el.addEventListener('mouseleave', () => cursorGlow?.classList.remove('is-hover-cta'));
 });
 
+// Hỗ trợ chạm trực tiếp lên màn hình (ngoài 3 nút bấm) trên điện thoại
+canvas.addEventListener('click', (e) => {
+  if (window.matchMedia('(pointer: fine)').matches) return;
+  const relX = e.clientX / window.innerWidth;
+  if (relX < 0.35) {
+    setTargetZone('left');
+  } else if (relX > 0.65) {
+    setTargetZone('right');
+  } else {
+    setTargetZone('center');
+  }
+});
+
 // Nút điều khiển trên thiết bị cảm ứng
 touchButtons.forEach((btn) => {
-  btn.addEventListener('click', () => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
     const zone = btn.dataset.zone;
     setTargetZone(targetZone === zone ? 'idle' : zone);
   });
@@ -294,7 +376,6 @@ if (document.fonts && document.fonts.ready) {
   document.fonts.ready.then(fitBrandTypography);
 }
 
-// Khởi chạy
 resizeCanvas();
 preloadAllFrames();
 requestAnimationFrame(animate);

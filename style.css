@@ -331,14 +331,24 @@ body {
   .speech-bubble {
     font-size: 0.78rem;
     padding: 8px 12px;
-    max-width: 175px;
+    max-width: 170px;
+  }
+
+  .bubble-left {
+    left: 14px;
+    top: 30%;
+  }
+
+  .bubble-right {
+    right: 14px;
+    top: 30%;
   }
 
   .bubble-center {
     left: auto;
-    right: 16px;
-    top: 20%;
-    max-width: 195px;
+    right: 14px;
+    top: 22%;
+    max-width: 185px;
   }
 
   .touch-controls {
