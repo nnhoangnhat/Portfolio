@@ -41,6 +41,7 @@ const framesStore = {
 
 let activeClip = 'idle';
 let targetZone = 'idle';
+let firstSideLooked = null; // Ghi nhớ bên (left/right) người dùng nhìn đầu tiên
 let currentFrame = 0;
 let loopDirection = 1;
 let hasReachedLoop = false;
@@ -236,6 +237,21 @@ function preloadAllFrames() {
 }
 
 function updateTouchButtons(zone) {
+  if (zone === 'left' || zone === 'right') {
+    if (!firstSideLooked) {
+      firstSideLooked = zone;
+    }
+    const text =
+      zone === firstSideLooked
+        ? 'Cô này xinh quá ❤️'
+        : 'Cô này cũng xinh nữa 🤤';
+    if (bubbles[zone]) {
+      bubbles[zone].textContent = text;
+    }
+  } else if (zone === 'idle') {
+    firstSideLooked = null;
+  }
+
   Object.entries(bubbles).forEach(([key, el]) => {
     if (!el) return;
     el.classList.toggle('is-visible', key === zone);
