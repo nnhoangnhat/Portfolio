@@ -99,16 +99,21 @@ body {
   display: block;
 }
 
-/* Làm sạch góc phải dưới của video (che nhẹ dấu mờ AI) */
+/* Làm sạch góc phải dưới của video (che hoàn toàn dấu mờ AI nhấp nháy) */
 .corner-clean-mask {
   position: absolute;
   right: 0;
   bottom: 0;
-  width: 160px;
-  height: 140px;
+  width: clamp(220px, 24vw, 400px);
+  height: clamp(220px, 38vh, 420px);
   pointer-events: none;
   z-index: 2;
-  background: radial-gradient(circle at 82% 82%, var(--cream-bg) 0%, rgba(244, 239, 227, 0.92) 42%, transparent 78%);
+  background: radial-gradient(
+    ellipse 88% 88% at 78% 78%,
+    #EFEAD8 0%,
+    rgba(239, 234, 216, 0.98) 54%,
+    transparent 85%
+  );
 }
 
 /* ==================== KHỐI TEXT GÓC TRÊN BÊN TRÁI ==================== */
