@@ -194,7 +194,7 @@ body {
 .speech-bubble {
   position: absolute;
   z-index: 15;
-  max-width: 240px;
+  max-width: 260px;
   padding: 12px 18px;
   border-radius: 18px;
   background-color: rgba(250, 248, 245, 0.96);
@@ -202,7 +202,7 @@ body {
   color: var(--sage-ink);
   font-size: 0.9rem;
   font-weight: 600;
-  line-height: 1.4;
+  line-height: 1.45;
   box-shadow: 0 14px 32px -8px rgba(77, 109, 87, 0.18);
   pointer-events: none;
   opacity: 0;
@@ -217,29 +217,6 @@ body {
   transform: translateY(0) scale(1);
 }
 
-.bubble-idle {
-  left: clamp(24px, 14vw, 220px);
-  bottom: 24%;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--sage-muted);
-  font-size: 0.84rem;
-}
-
-.bubble-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: var(--sage);
-  animation: pulse 1.8s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.4); opacity: 0.5; }
-}
-
 .bubble-left {
   left: clamp(24px, 12vw, 190px);
   top: 42%;
@@ -251,8 +228,8 @@ body {
 }
 
 .bubble-center {
-  right: clamp(24px, 18vw, 280px);
-  top: 24%;
+  right: clamp(24px, 16vw, 250px);
+  top: 22%;
   background-color: var(--sage-dark);
   border-color: var(--sage-dark);
   color: #ffffff;

@@ -23,6 +23,12 @@ const brandFirst = document.getElementById('brandFirst');
 const brandFull = document.getElementById('brandFull');
 const brandRole = document.getElementById('brandRole');
 
+const bubbles = {
+  left: document.getElementById('bubbleLeft'),
+  right: document.getElementById('bubbleRight'),
+  center: document.getElementById('bubbleCenter'),
+};
+
 const touchButtons = document.querySelectorAll('.touch-btn');
 const ctaElements = document.querySelectorAll('a, button');
 
@@ -167,6 +173,11 @@ function preloadAllFrames() {
 }
 
 function updateTouchButtons(zone) {
+  Object.entries(bubbles).forEach(([key, el]) => {
+    if (!el) return;
+    el.classList.toggle('is-visible', key === zone);
+  });
+
   touchButtons.forEach((btn) => {
     btn.classList.toggle('is-active', btn.dataset.zone === zone);
   });
