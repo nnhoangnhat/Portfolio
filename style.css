@@ -228,17 +228,17 @@ body {
 }
 
 .bubble-center {
-  left: clamp(280px, 25vw, 470px);
+  left: calc(50% + min(12vw, 185px));
   right: auto;
-  top: 18%;
+  top: 19%;
   background-color: var(--sage-dark);
   border-color: var(--sage-dark);
   color: #ffffff;
-  transform: translateY(10px) scale(0.94) rotate(-5deg);
+  transform: translateY(10px) scale(0.94) rotate(5deg);
 }
 
 .bubble-center.is-visible {
-  transform: translateY(0) scale(1) rotate(-5deg);
+  transform: translateY(0) scale(1) rotate(5deg);
 }
 
 /* ==================== CỤM NÚT PHÍA DƯỚI ==================== */
